@@ -1,6 +1,7 @@
 const STORAGE_KEY = "swipe-wallet-state-v1";
 const CLOUD_BACKUP_KEY = "swipe-wallet-last-cloud-state-v1";
 const DEFAULT_SWIPE_PRICE = 12.5;
+const DEFAULT_DEVELOPER_QUOTE = "Swipe first, settle later, audit always.";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -35,6 +36,9 @@ const els = {
   weekSwipes: document.querySelector("#metric-week-swipes"),
   lowBalances: document.querySelector("#metric-low-balances"),
   members: document.querySelector("#metric-members"),
+  developerQuote: document.querySelector("#developer-quote"),
+  quoteForm: document.querySelector("#quote-form"),
+  quoteInput: document.querySelector("#quote-input"),
   mealForm: document.querySelector("#meal-form"),
   topupForm: document.querySelector("#topup-form"),
   memberForm: document.querySelector("#member-form"),
@@ -67,6 +71,7 @@ initializeApp();
 
 function bindEvents() {
   els.memberForm.addEventListener("submit", handleAddMember);
+  els.quoteForm.addEventListener("submit", handleQuoteSave);
   els.topupForm.addEventListener("submit", handleTopup);
   els.mealForm.addEventListener("submit", handleMeal);
   els.requestForm.addEventListener("submit", handleSubmitRequest);
@@ -348,6 +353,23 @@ async function handleAddMember(event) {
 
   resetForm(event.currentTarget);
   await commitState(nextState, "Member added.");
+}
+
+async function handleQuoteSave(event) {
+  event.preventDefault();
+  if (!ensureCanEdit()) return;
+
+  const formData = new FormData(event.currentTarget);
+  const quote = String(formData.get("quote") || "").trim();
+
+  if (!quote) {
+    showToast("Enter a quote.");
+    return;
+  }
+
+  const nextState = cloneState(state);
+  nextState.settings.quote = quote.slice(0, 140);
+  await commitState(nextState, "Quote saved.");
 }
 
 async function handleTopup(event) {
@@ -775,6 +797,10 @@ function syncControls() {
   if (!els.requestTopupDate.value) els.requestTopupDate.value = todayKey();
   if (!els.requestMealDate.value) els.requestMealDate.value = todayKey();
   if (!els.requestMealPrice.value) els.requestMealPrice.value = state.settings.swipePrice.toFixed(2);
+  els.developerQuote.textContent = state.settings.quote;
+  if (document.activeElement !== els.quoteInput) {
+    els.quoteInput.value = state.settings.quote;
+  }
   renderRequestFields();
 }
 
@@ -1269,12 +1295,16 @@ function normalizeState(value) {
     });
 
   const swipePrice = Number(value.settings && value.settings.swipePrice);
+  const quote = value.settings?.quote
+    ? String(value.settings.quote).trim().slice(0, 140)
+    : DEFAULT_DEVELOPER_QUOTE;
 
   return {
     settings: {
       swipePrice: Number.isFinite(swipePrice) && swipePrice > 0
         ? roundMoney(swipePrice)
         : DEFAULT_SWIPE_PRICE,
+      quote,
     },
     people,
     transactions,
@@ -1285,6 +1315,7 @@ function createEmptyState() {
   return {
     settings: {
       swipePrice: DEFAULT_SWIPE_PRICE,
+      quote: DEFAULT_DEVELOPER_QUOTE,
     },
     people: [],
     transactions: [],

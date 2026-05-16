@@ -65,6 +65,23 @@
         </article>
       </section>
 
+      <section class="quote-panel" aria-label="Developer quote">
+        <div class="quote-copy">
+          <i data-lucide="quote" aria-hidden="true"></i>
+          <p id="developer-quote"></p>
+        </div>
+        <form id="quote-form" class="quote-form edit-panel">
+          <label>
+            Developer quote
+            <input id="quote-input" name="quote" type="text" maxlength="140" />
+          </label>
+          <button class="button secondary compact" type="submit">
+            <i data-lucide="save" aria-hidden="true"></i>
+            Save
+          </button>
+        </form>
+      </section>
+
       <section class="workspace-grid" aria-label="Swipe wallet workspace">
         <section class="panel balance-panel">
           <div class="panel-heading">
@@ -202,79 +219,84 @@
           </div>
         </div>
         <form id="request-form" class="stacked-form">
-          <label>
-            Request type
-            <select id="request-type" name="type">
-              <option value="add_member">Add myself</option>
-              <option value="topup">Report top-up</option>
-              <option value="meal">Report swipe</option>
-            </select>
-          </label>
-
-          <div class="request-fields active" data-request-fields="add_member">
-            <div class="form-row">
+          <div class="request-form-grid">
+            <div class="request-sidebar">
               <label>
-                Name
-                <input id="request-name" name="name" type="text" maxlength="40" autocomplete="off" />
-              </label>
-              <label>
-                Contact
-                <input id="request-contact" name="contact" type="text" maxlength="60" autocomplete="off" placeholder="Optional" />
-              </label>
-            </div>
-          </div>
-
-          <div class="request-fields" data-request-fields="topup">
-            <label>
-              Member
-              <select id="request-topup-person" name="topupPersonId"></select>
-            </label>
-            <div class="form-row">
-              <label>
-                Amount
-                <input id="request-topup-amount" name="topupAmount" type="number" min="0.01" step="0.01" />
-              </label>
-              <label>
-                Date
-                <input id="request-topup-date" name="topupDate" type="date" />
-              </label>
-            </div>
-          </div>
-
-          <div class="request-fields" data-request-fields="meal">
-            <div class="form-row">
-              <label>
-                Date
-                <input id="request-meal-date" name="mealDate" type="date" />
-              </label>
-              <label>
-                Meal
-                <select id="request-meal-name" name="mealName">
-                  <option value="Breakfast">Breakfast</option>
-                  <option value="Lunch">Lunch</option>
-                  <option value="Dinner">Dinner</option>
-                  <option value="Late night">Late night</option>
+                Request type
+                <select id="request-type" name="type">
+                  <option value="add_member">Add myself</option>
+                  <option value="topup">Report top-up</option>
+                  <option value="meal">Report swipe</option>
                 </select>
               </label>
+              <label>
+                Note
+                <input id="request-note" name="note" type="text" maxlength="100" placeholder="Optional" />
+              </label>
+              <button class="button primary" type="submit">
+                <i data-lucide="send" aria-hidden="true"></i>
+                Submit request
+              </button>
             </div>
-            <label>
-              Swipe price
-              <input id="request-meal-price" name="mealPrice" type="number" min="0.01" step="0.01" />
-            </label>
-            <fieldset>
-              <legend>Members</legend>
-              <div id="request-meal-members" class="member-picker"></div>
-            </fieldset>
-          </div>
 
-          <label>
-            Note
-            <input id="request-note" name="note" type="text" maxlength="100" placeholder="Optional" />
-          </label>
-          <button class="button primary" type="submit">
-            <i data-lucide="send" aria-hidden="true"></i>
-            Submit request
-          </button>
+            <div class="request-details">
+              <div class="request-fields active" data-request-fields="add_member">
+                <div class="form-row">
+                  <label>
+                    Name
+                    <input id="request-name" name="name" type="text" maxlength="40" autocomplete="off" />
+                  </label>
+                  <label>
+                    Contact
+                    <input id="request-contact" name="contact" type="text" maxlength="60" autocomplete="off" placeholder="Optional" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="request-fields" data-request-fields="topup">
+                <label>
+                  Member
+                  <select id="request-topup-person" name="topupPersonId"></select>
+                </label>
+                <div class="form-row">
+                  <label>
+                    Amount
+                    <input id="request-topup-amount" name="topupAmount" type="number" min="0.01" step="0.01" />
+                  </label>
+                  <label>
+                    Date
+                    <input id="request-topup-date" name="topupDate" type="date" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="request-fields" data-request-fields="meal">
+                <div class="form-row">
+                  <label>
+                    Date
+                    <input id="request-meal-date" name="mealDate" type="date" />
+                  </label>
+                  <label>
+                    Meal
+                    <select id="request-meal-name" name="mealName">
+                      <option value="Breakfast">Breakfast</option>
+                      <option value="Lunch">Lunch</option>
+                      <option value="Dinner">Dinner</option>
+                      <option value="Late night">Late night</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  Swipe price
+                  <input id="request-meal-price" name="mealPrice" type="number" min="0.01" step="0.01" />
+                </label>
+                <fieldset>
+                  <legend>Members</legend>
+                  <div id="request-meal-members" class="member-picker"></div>
+                </fieldset>
+              </div>
+            </div>
+          </div>
         </form>
       </section>
 
