@@ -2,6 +2,7 @@ const STORAGE_KEY = "swipe-wallet-state-v1";
 const CLOUD_BACKUP_KEY = "swipe-wallet-last-cloud-state-v1";
 const DEFAULT_SWIPE_PRICE = 12.5;
 const DEFAULT_DEVELOPER_QUOTE = "Swipe first, settle later, audit always. - Zhichao Chen";
+const MANAGER_DISPLAY_BALANCE = 100;
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -868,7 +869,7 @@ function renderSummary() {
 }
 
 function renderBalances(mealAwards = getMealAwardMap()) {
-  const rows = getBalanceRows().sort(
+  const rows = getBalanceRows({ includeOrganizers: true }).sort(
     (a, b) => a.balance - b.balance || a.name.localeCompare(b.name),
   );
 
@@ -883,9 +884,12 @@ function renderBalances(mealAwards = getMealAwardMap()) {
 
   els.balancesBody.innerHTML = rows
     .map((row) => {
-      const status = getBalanceStatus(row.balance);
+      const isOrganizer = row.role === "organizer";
+      const status = isOrganizer
+        ? { label: "Manager", className: "status-manager" }
+        : getBalanceStatus(row.balance);
       const deleteButton =
-        row.transactionCount === 0 && canEdit()
+        row.transactionCount === 0 && canEdit() && !isOrganizer
           ? `
             <button class="delete-row" type="button" title="Delete member" aria-label="Delete ${escapeHtml(row.name)}" data-delete-person="${escapeHtml(row.id)}">
               <i data-lucide="trash-2" aria-hidden="true"></i>
@@ -898,6 +902,7 @@ function renderBalances(mealAwards = getMealAwardMap()) {
           <td>
             <div class="member-name-line">
               <strong>${escapeHtml(row.name)}</strong>
+              ${isOrganizer ? '<span class="role-tag">manager</span>' : ""}
               ${renderMealAwards(row.id, mealAwards)}
             </div>
             ${row.contact ? `<div class="empty-state">${escapeHtml(row.contact)}</div>` : ""}
@@ -1132,10 +1137,15 @@ function renderLedger() {
     .join("");
 }
 
-function getBalanceRows() {
-  return getBillablePeople().map((person) => {
+function getBalanceRows(options = {}) {
+  const people = options.includeOrganizers ? state.people : getBillablePeople();
+
+  return people.map((person) => {
     const transactions = state.transactions.filter((item) => item.personId === person.id);
-    const balance = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+    const isOrganizer = person.role === "organizer";
+    const balance = isOrganizer
+      ? MANAGER_DISPLAY_BALANCE
+      : transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
     const lastActivity = transactions
       .map((transaction) => transaction.date)
       .sort((a, b) => b.localeCompare(a))[0];

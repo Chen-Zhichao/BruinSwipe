@@ -531,6 +531,11 @@ tbody tr:last-child td {
   color: var(--red);
 }
 
+.status-manager {
+  background: #eff6ff;
+  color: var(--blue);
+}
+
 .type-topup {
   background: #eaf7ee;
   color: var(--green);
