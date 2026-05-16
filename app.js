@@ -1,7 +1,7 @@
 const STORAGE_KEY = "swipe-wallet-state-v1";
 const CLOUD_BACKUP_KEY = "swipe-wallet-last-cloud-state-v1";
 const DEFAULT_SWIPE_PRICE = 12.5;
-const DEFAULT_DEVELOPER_QUOTE = "Swipe first, settle later, audit always.";
+const DEFAULT_DEVELOPER_QUOTE = "Swipe first, settle later, audit always. - Zhichao Chen";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
