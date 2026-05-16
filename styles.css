@@ -369,6 +369,10 @@ table {
   min-width: 560px;
 }
 
+.members-table {
+  min-width: 620px;
+}
+
 th,
 td {
   padding: 12px 10px;

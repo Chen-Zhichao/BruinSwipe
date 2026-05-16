@@ -24,6 +24,7 @@ let authSubscription = null;
 
 const els = {
   balancesBody: document.querySelector("#balances-body"),
+  membersBody: document.querySelector("#members-body"),
   ledgerBody: document.querySelector("#ledger-body"),
   mealMembers: document.querySelector("#meal-members"),
   weekGrid: document.querySelector("#week-grid"),
@@ -78,6 +79,12 @@ function bindEvents() {
   });
 
   els.balancesBody.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delete-person]");
+    if (!button) return;
+    deletePerson(button.dataset.deletePerson);
+  });
+
+  els.membersBody.addEventListener("click", (event) => {
     const button = event.target.closest("[data-delete-person]");
     if (!button) return;
     deletePerson(button.dataset.deletePerson);
@@ -396,6 +403,7 @@ function render() {
   syncControls();
   renderSummary();
   renderBalances();
+  renderMembers();
   renderWeek();
   renderLedger();
   refreshIcons();
@@ -503,6 +511,49 @@ function renderBalances() {
           <td><span class="status-pill ${status.className}">${status.label}</span></td>
           <td>${row.lastActivity ? escapeHtml(formatDateLabel(row.lastActivity)) : "-"}</td>
           <td><div class="row-actions">${deleteButton}</div></td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function renderMembers() {
+  if (!els.membersBody) return;
+
+  const people = state.people
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (people.length === 0) {
+    els.membersBody.innerHTML = `
+      <tr>
+        <td colspan="5" class="empty-state">No members yet.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  els.membersBody.innerHTML = people
+    .map((person) => {
+      const transactionCount = state.transactions.filter(
+        (transaction) => transaction.personId === person.id,
+      ).length;
+      const deleteControl =
+        transactionCount === 0 && canEdit()
+          ? `
+            <button class="delete-row" type="button" title="Delete member" aria-label="Delete ${escapeHtml(person.name)}" data-delete-person="${escapeHtml(person.id)}">
+              <i data-lucide="trash-2" aria-hidden="true"></i>
+            </button>
+          `
+          : '<span class="empty-state">Has ledger</span>';
+
+      return `
+        <tr>
+          <td><strong>${escapeHtml(person.name)}</strong></td>
+          <td>${person.role === "organizer" ? '<span class="role-tag">organizer</span>' : "member"}</td>
+          <td>${person.contact ? escapeHtml(person.contact) : "-"}</td>
+          <td>${transactionCount}</td>
+          <td><div class="row-actions">${deleteControl}</div></td>
         </tr>
       `;
     })
