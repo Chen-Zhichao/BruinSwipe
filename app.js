@@ -1295,9 +1295,8 @@ function normalizeState(value) {
     });
 
   const swipePrice = Number(value.settings && value.settings.swipePrice);
-  const quote = value.settings?.quote
-    ? String(value.settings.quote).trim().slice(0, 140)
-    : DEFAULT_DEVELOPER_QUOTE;
+  const quoteText = value.settings?.quote ? String(value.settings.quote).trim() : "";
+  const quote = quoteText ? quoteText.slice(0, 140) : DEFAULT_DEVELOPER_QUOTE;
 
   return {
     settings: {
