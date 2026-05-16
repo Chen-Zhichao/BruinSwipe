@@ -102,6 +102,7 @@ Organizer accounts:
 - Appear in the meal picker.
 - Appear in the weekly swipe view when selected.
 - Appear in the balance table with a fixed display balance of `$100.00`.
+- Do not store or display contact information.
 - Do not count toward total balance, low balances, or paying member count.
 - Are not available in the top-up form.
 

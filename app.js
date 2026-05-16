@@ -907,7 +907,7 @@ function renderBalances(mealAwards = getMealAwardMap(), topupAwards = getTopupAw
               ${renderTopupAwards(row.id, topupAwards)}
               ${renderMealAwards(row.id, mealAwards)}
             </div>
-            ${row.contact ? `<div class="empty-state">${escapeHtml(row.contact)}</div>` : ""}
+            ${!isOrganizer && row.contact ? `<div class="empty-state">${escapeHtml(row.contact)}</div>` : ""}
           </td>
           <td class="money ${row.balance < 0 ? "negative" : "positive"}">${currency.format(row.balance)}</td>
           <td><span class="status-pill ${status.className}">${status.label}</span></td>
@@ -959,7 +959,7 @@ function renderMembers(mealAwards = getMealAwardMap(), topupAwards = getTopupAwa
             </div>
           </td>
           <td>${person.role === "organizer" ? '<span class="role-tag">organizer</span>' : "member"}</td>
-          <td>${person.contact ? escapeHtml(person.contact) : "-"}</td>
+          <td>${person.role === "organizer" || !person.contact ? "-" : escapeHtml(person.contact)}</td>
           <td>${transactionCount}</td>
           <td><div class="row-actions">${deleteControl}</div></td>
         </tr>
@@ -1418,9 +1418,14 @@ function normalizeState(value) {
     .map((person) => ({
       id: String(person.id),
       name: String(person.name).trim(),
-      contact: person.contact ? String(person.contact).trim() : "",
       role: person.role === "organizer" ? "organizer" : "member",
       createdAt: person.createdAt || new Date().toISOString(),
+      contact:
+        person.role === "organizer"
+          ? ""
+          : person.contact
+            ? String(person.contact).trim()
+            : "",
     }));
 
   const peopleIds = new Set(people.map((person) => person.id));
