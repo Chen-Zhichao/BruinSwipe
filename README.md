@@ -10,7 +10,7 @@ Bruin$wipe tracks prepaid balances for UCLA meal swipes.
 - Swipe price can be `$0.00` for free swipes.
 - Show each member's current balance.
 - Show a Monday-Sunday weekly swipe view.
-- Highlight weekly and monthly swipe leaders with trophy badges.
+- Highlight weekly and monthly swipe leaders with food badges.
 - Highlight the top total top-up member with a diamond badge.
 - Export and import a JSON backup.
 - Optional Supabase cloud sync so friends can open the same URL and see live balances.

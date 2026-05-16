@@ -1241,11 +1241,11 @@ function renderMealAwards(personId, mealAwards) {
   const badges = [];
 
   if (weekCount) {
-    badges.push(renderAwardBadge("week", "🏆", "W", weekCount, "Most swipes this week"));
+    badges.push(renderAwardBadge("week", "🌭", "W", weekCount, "Most swipes this week"));
   }
 
   if (monthCount) {
-    badges.push(renderAwardBadge("month", "👑", "M", monthCount, "Most swipes this month"));
+    badges.push(renderAwardBadge("month", "🍔", "M", monthCount, "Most swipes this month"));
   }
 
   return badges.length ? `<span class="trophy-badges">${badges.join("")}</span>` : "";
