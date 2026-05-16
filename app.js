@@ -697,11 +697,13 @@ function changeWeek(dayDelta) {
 }
 
 function render() {
+  const mealAwards = getMealAwardMap();
+
   updateAccessMode();
   syncControls();
   renderSummary();
-  renderBalances();
-  renderMembers();
+  renderBalances(mealAwards);
+  renderMembers(mealAwards);
   renderRequests();
   renderWeek();
   renderLedger();
@@ -813,7 +815,7 @@ function renderSummary() {
   els.members.textContent = String(getBillablePeople().length);
 }
 
-function renderBalances() {
+function renderBalances(mealAwards = getMealAwardMap()) {
   const rows = getBalanceRows().sort(
     (a, b) => a.balance - b.balance || a.name.localeCompare(b.name),
   );
@@ -842,7 +844,10 @@ function renderBalances() {
       return `
         <tr>
           <td>
-            <strong>${escapeHtml(row.name)}</strong>
+            <div class="member-name-line">
+              <strong>${escapeHtml(row.name)}</strong>
+              ${renderMealAwards(row.id, mealAwards)}
+            </div>
             ${row.contact ? `<div class="empty-state">${escapeHtml(row.contact)}</div>` : ""}
           </td>
           <td class="money ${row.balance < 0 ? "negative" : "positive"}">${currency.format(row.balance)}</td>
@@ -855,7 +860,7 @@ function renderBalances() {
     .join("");
 }
 
-function renderMembers() {
+function renderMembers(mealAwards = getMealAwardMap()) {
   if (!els.membersBody) return;
 
   const people = state.people
@@ -887,7 +892,12 @@ function renderMembers() {
 
       return `
         <tr>
-          <td><strong>${escapeHtml(person.name)}</strong></td>
+          <td>
+            <div class="member-name-line">
+              <strong>${escapeHtml(person.name)}</strong>
+              ${renderMealAwards(person.id, mealAwards)}
+            </div>
+          </td>
           <td>${person.role === "organizer" ? '<span class="role-tag">organizer</span>' : "member"}</td>
           <td>${person.contact ? escapeHtml(person.contact) : "-"}</td>
           <td>${transactionCount}</td>
@@ -1078,6 +1088,70 @@ function getBalanceRows() {
 
 function getBillablePeople() {
   return state.people.filter((person) => person.role !== "organizer");
+}
+
+function getMealAwardMap() {
+  const eligibleIds = new Set(getBillablePeople().map((person) => person.id));
+  const weekEnd = addDays(visibleWeekStart, 6);
+  const monthStart = new Date(visibleWeekStart.getFullYear(), visibleWeekStart.getMonth(), 1);
+  const monthEnd = new Date(visibleWeekStart.getFullYear(), visibleWeekStart.getMonth() + 1, 0);
+
+  return {
+    week: getTopMealCounts(toDateKey(visibleWeekStart), toDateKey(weekEnd), eligibleIds),
+    month: getTopMealCounts(toDateKey(monthStart), toDateKey(monthEnd), eligibleIds),
+  };
+}
+
+function getTopMealCounts(startKey, endKey, eligibleIds) {
+  const counts = new Map();
+
+  state.transactions.forEach((transaction) => {
+    if (
+      transaction.type !== "meal" ||
+      !eligibleIds.has(transaction.personId) ||
+      transaction.date < startKey ||
+      transaction.date > endKey
+    ) {
+      return;
+    }
+
+    counts.set(transaction.personId, (counts.get(transaction.personId) || 0) + 1);
+  });
+
+  const topCount = Math.max(0, ...counts.values());
+  if (topCount === 0) return new Map();
+
+  const winners = new Map();
+  counts.forEach((count, personId) => {
+    if (count === topCount) winners.set(personId, count);
+  });
+  return winners;
+}
+
+function renderMealAwards(personId, mealAwards) {
+  const weekCount = mealAwards.week.get(personId);
+  const monthCount = mealAwards.month.get(personId);
+  const badges = [];
+
+  if (weekCount) {
+    badges.push(renderAwardBadge("week", "🏆", "W", weekCount, "Most swipes this week"));
+  }
+
+  if (monthCount) {
+    badges.push(renderAwardBadge("month", "👑", "M", monthCount, "Most swipes this month"));
+  }
+
+  return badges.length ? `<span class="trophy-badges">${badges.join("")}</span>` : "";
+}
+
+function renderAwardBadge(scope, icon, label, count, title) {
+  const safeTitle = `${title}: ${count}`;
+  return `
+    <span class="trophy-badge ${scope}" title="${escapeHtml(safeTitle)}" aria-label="${escapeHtml(safeTitle)}">
+      <span class="award-icon" aria-hidden="true">${icon}</span>
+      <span>${label} ${count}</span>
+    </span>
+  `;
 }
 
 function getBalanceStatus(balance) {

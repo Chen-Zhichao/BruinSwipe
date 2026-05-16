@@ -9,6 +9,7 @@ Bruin$wipe tracks prepaid balances for UCLA meal swipes.
 - Record a meal date, meal type, swipe price, and all people who used a swipe.
 - Show each member's current balance.
 - Show a Monday-Sunday weekly swipe view.
+- Highlight weekly and monthly swipe leaders with trophy badges.
 - Export and import a JSON backup.
 - Optional Supabase cloud sync so friends can open the same URL and see live balances.
 - Let friends submit add/top-up/swipe requests for admin approval.

@@ -450,6 +450,48 @@ tbody tr:last-child td {
   border-bottom: 0;
 }
 
+.member-name-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trophy-badges {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.trophy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  border: 1px solid #f4c979;
+  border-radius: 999px;
+  background: #fff8e8;
+  color: #8a5208;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.trophy-badge.month {
+  border-color: #9fd5ce;
+  background: #e9f7f5;
+  color: var(--teal-dark);
+}
+
+.award-icon {
+  width: 14px;
+  flex: 0 0 14px;
+  font-size: 13px;
+  line-height: 1;
+}
+
 .money {
   font-variant-numeric: tabular-nums;
   font-weight: 800;
