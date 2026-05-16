@@ -7,6 +7,7 @@ Bruin$wipe tracks prepaid balances for UCLA meal swipes.
 - Add members.
 - Record top-ups from Zelle, Venmo, cash, or any other payment source.
 - Record a meal date, meal type, swipe price, and all people who used a swipe.
+- Swipe price can be `$0.00` for free swipes.
 - Show each member's current balance.
 - Show a Monday-Sunday weekly swipe view.
 - Highlight weekly and monthly swipe leaders with trophy badges.

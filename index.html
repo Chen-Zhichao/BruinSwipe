@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bruin$wipe</title>
-    <link rel="stylesheet" href="./styles.css?v=20260516-hide-manager-contact" />
+    <link rel="stylesheet" href="./styles.css?v=20260516-zero-swipe-price" />
     <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="./config.js?v=20260516-hide-manager-contact"></script>
-    <script defer src="./app.js?v=20260516-hide-manager-contact"></script>
+    <script defer src="./config.js?v=20260516-zero-swipe-price"></script>
+    <script defer src="./app.js?v=20260516-zero-swipe-price"></script>
   </head>
   <body>
     <header class="app-header">
@@ -131,7 +131,7 @@
             </div>
             <label>
               Swipe price
-              <input id="request-meal-price" name="mealPrice" type="number" min="0.01" step="0.01" />
+              <input id="request-meal-price" name="mealPrice" type="number" min="0" step="0.01" />
             </label>
             <fieldset>
               <legend>Members</legend>
@@ -236,7 +236,7 @@
             <div class="form-row">
               <label>
                 Swipe price
-                <input id="meal-price" name="price" type="number" min="0.01" step="0.01" required />
+                <input id="meal-price" name="price" type="number" min="0" step="0.01" required />
               </label>
               <label>
                 Note

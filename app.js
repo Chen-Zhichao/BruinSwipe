@@ -417,8 +417,8 @@ async function handleMeal(event) {
     els.mealMembers.querySelectorAll("input[type='checkbox']:checked"),
   ).map((input) => input.value);
 
-  if (!Number.isFinite(price) || price <= 0) {
-    showToast("Enter a positive swipe price.");
+  if (!Number.isFinite(price) || price < 0) {
+    showToast("Enter a non-negative swipe price.");
     return;
   }
 
@@ -506,8 +506,8 @@ async function handleSubmitRequest(event) {
       els.requestMealMembers.querySelectorAll("input[type='checkbox']:checked"),
     ).map((input) => input.value);
 
-    if (!Number.isFinite(price) || price <= 0) {
-      showToast("Enter a positive swipe price.");
+    if (!Number.isFinite(price) || price < 0) {
+      showToast("Enter a non-negative swipe price.");
       return;
     }
 
@@ -686,7 +686,7 @@ function applyRequestToState(nextState, request) {
     const price = Number(payload.price);
     const note = String(payload.note || "").trim();
 
-    if (!Number.isFinite(price) || price <= 0 || !isDateKey(date) || personIds.length === 0) {
+    if (!Number.isFinite(price) || price < 0 || !isDateKey(date) || personIds.length === 0) {
       return { ok: false, message: "Meal request is invalid." };
     }
 
@@ -1466,7 +1466,7 @@ function normalizeState(value) {
 
   return {
     settings: {
-      swipePrice: Number.isFinite(swipePrice) && swipePrice > 0
+      swipePrice: Number.isFinite(swipePrice) && swipePrice >= 0
         ? roundMoney(swipePrice)
         : DEFAULT_SWIPE_PRICE,
       quote,
