@@ -2,6 +2,7 @@ const STORAGE_KEY = "swipe-wallet-state-v1";
 const CLOUD_BACKUP_KEY = "swipe-wallet-last-cloud-state-v1";
 const REQUEST_LIMIT_STORAGE_KEY = "swipe-wallet-daily-request-count-v1";
 const DAILY_REQUEST_LIMIT = 5;
+const LEDGER_PAGE_SIZE = 10;
 const DEFAULT_SWIPE_PRICE = 12.5;
 const DEFAULT_DEVELOPER_QUOTE = "Swipe first, settle later, audit always. - Zhichao Chen";
 const MANAGER_DISPLAY_BALANCE = 100;
@@ -24,6 +25,7 @@ let state = createEmptyState();
 let requests = [];
 let cloudStore = null;
 let visibleWeekStart = getWeekStart(new Date());
+let ledgerPage = 1;
 let toastTimer = null;
 let authSubscription = null;
 
@@ -64,6 +66,9 @@ const els = {
   exportData: document.querySelector("#export-data"),
   importData: document.querySelector("#import-data"),
   resetData: document.querySelector("#reset-data"),
+  ledgerPageLabel: document.querySelector("#ledger-page-label"),
+  previousLedgerPage: document.querySelector("#previous-ledger-page"),
+  nextLedgerPage: document.querySelector("#next-ledger-page"),
   previousWeek: document.querySelector("#previous-week"),
   currentWeek: document.querySelector("#current-week"),
   nextWeek: document.querySelector("#next-week"),
@@ -86,6 +91,8 @@ function bindEvents() {
   els.exportData.addEventListener("click", exportState);
   els.importData.addEventListener("change", importState);
   els.resetData.addEventListener("click", resetState);
+  els.previousLedgerPage.addEventListener("click", () => changeLedgerPage(-1));
+  els.nextLedgerPage.addEventListener("click", () => changeLedgerPage(1));
   els.previousWeek.addEventListener("click", () => changeWeek(-7));
   els.currentWeek.addEventListener("click", () => {
     visibleWeekStart = getWeekStart(new Date());
@@ -760,6 +767,12 @@ function changeWeek(dayDelta) {
   render();
 }
 
+function changeLedgerPage(pageDelta) {
+  ledgerPage += pageDelta;
+  renderLedger();
+  refreshIcons();
+}
+
 function render() {
   const mealAwards = getMealAwardMap();
   const topupAwards = getTopupAwardMap();
@@ -1134,15 +1147,24 @@ function renderLedger() {
     });
 
   if (rows.length === 0) {
+    ledgerPage = 1;
     els.ledgerBody.innerHTML = `
       <tr>
         <td colspan="6" class="empty-state">No ledger entries yet.</td>
       </tr>
     `;
+    updateLedgerPagination(0, 1);
     return;
   }
 
-  els.ledgerBody.innerHTML = rows
+  const totalPages = Math.ceil(rows.length / LEDGER_PAGE_SIZE);
+  ledgerPage = Math.min(Math.max(ledgerPage, 1), totalPages);
+  const pageRows = rows.slice(
+    (ledgerPage - 1) * LEDGER_PAGE_SIZE,
+    ledgerPage * LEDGER_PAGE_SIZE,
+  );
+
+  els.ledgerBody.innerHTML = pageRows
     .map((transaction) => {
       const person = state.people.find((item) => item.id === transaction.personId);
       const typeLabel = transaction.type === "topup" ? "Top-up" : "Meal";
@@ -1168,6 +1190,18 @@ function renderLedger() {
       `;
     })
     .join("");
+  updateLedgerPagination(rows.length, totalPages);
+}
+
+function updateLedgerPagination(rowCount, totalPages) {
+  if (!els.ledgerPageLabel || !els.previousLedgerPage || !els.nextLedgerPage) return;
+
+  const hasRows = rowCount > 0;
+  els.ledgerPageLabel.textContent = hasRows
+    ? `Page ${ledgerPage} of ${totalPages} · ${rowCount} entries`
+    : "No entries";
+  els.previousLedgerPage.disabled = !hasRows || ledgerPage <= 1;
+  els.nextLedgerPage.disabled = !hasRows || ledgerPage >= totalPages;
 }
 
 function getBalanceRows(options = {}) {

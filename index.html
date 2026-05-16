@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bruin$wipe🐻🍚</title>
-    <link rel="stylesheet" href="./styles.css?v=20260516-bear-rice-title" />
+    <link rel="stylesheet" href="./styles.css?v=20260516-ledger-pagination" />
     <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="./config.js?v=20260516-bear-rice-title"></script>
-    <script defer src="./app.js?v=20260516-bear-rice-title"></script>
+    <script defer src="./config.js?v=20260516-ledger-pagination"></script>
+    <script defer src="./app.js?v=20260516-ledger-pagination"></script>
   </head>
   <body>
     <header class="app-header">
@@ -387,12 +387,23 @@
         <div class="panel-heading">
           <div>
             <h2>Ledger</h2>
-            <p>Every balance change</p>
+            <p>10 entries per page</p>
           </div>
-          <button class="button danger compact admin-required" id="reset-data" type="button">
-            <i data-lucide="trash-2" aria-hidden="true"></i>
-            Reset
-          </button>
+          <div class="ledger-heading-actions">
+            <button class="button danger compact admin-required" id="reset-data" type="button">
+              <i data-lucide="trash-2" aria-hidden="true"></i>
+              Reset
+            </button>
+            <div class="ledger-pagination" aria-label="Ledger pagination">
+              <button class="icon-button" id="previous-ledger-page" type="button" title="Previous ledger page" aria-label="Previous ledger page">
+                <i data-lucide="chevron-left" aria-hidden="true"></i>
+              </button>
+              <span id="ledger-page-label">Page 1 of 1</span>
+              <button class="icon-button" id="next-ledger-page" type="button" title="Next ledger page" aria-label="Next ledger page">
+                <i data-lucide="chevron-right" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
