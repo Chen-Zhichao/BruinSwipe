@@ -13,6 +13,7 @@ Bruin$wipe tracks prepaid balances for UCLA meal swipes.
 - Export and import a JSON backup.
 - Optional Supabase cloud sync so friends can open the same URL and see live balances.
 - Let friends submit add/top-up/swipe requests for admin approval.
+- Let admins edit the name on pending add-member requests before approval.
 
 ## Run locally
 

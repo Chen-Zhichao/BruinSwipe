@@ -683,6 +683,7 @@ tbody tr:last-child td {
 }
 
 .approve-row,
+.edit-row,
 .reject-row {
   width: 32px;
   height: 32px;
@@ -693,6 +694,15 @@ tbody tr:last-child td {
 
 .approve-row {
   color: var(--green);
+}
+
+.edit-row {
+  color: var(--blue);
+}
+
+.edit-row:hover {
+  border-color: #b7c9f8;
+  background: #eff6ff;
 }
 
 .approve-row:hover {
@@ -710,6 +720,7 @@ tbody tr:last-child td {
 }
 
 .approve-row svg,
+.edit-row svg,
 .reject-row svg {
   width: 16px;
   height: 16px;

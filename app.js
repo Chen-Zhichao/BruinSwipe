@@ -108,8 +108,14 @@ function bindEvents() {
   });
 
   els.requestsBody.addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-edit-member-request]");
     const approveButton = event.target.closest("[data-approve-request]");
     const rejectButton = event.target.closest("[data-reject-request]");
+
+    if (editButton) {
+      editMemberRequest(editButton.dataset.editMemberRequest);
+      return;
+    }
 
     if (approveButton) {
       approveRequest(approveButton.dataset.approveRequest);
@@ -555,6 +561,52 @@ async function rejectRequest(requestId) {
   showToast("Request rejected.");
 }
 
+async function editMemberRequest(requestId) {
+  if (!ensureCanEdit()) return;
+
+  const request = requests.find((item) => item.id === requestId);
+  if (!request || request.type !== "add_member") return;
+
+  const payload = request.payload || {};
+  const currentName = String(payload.name || "").trim();
+  const nextName = window.prompt("Edit member name", currentName);
+  if (nextName === null) return;
+
+  const name = nextName.trim();
+  if (!name) {
+    showToast("Enter a member name.");
+    return;
+  }
+
+  const duplicate = state.people.some(
+    (person) => person.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (duplicate) {
+    showToast("That member already exists.");
+    return;
+  }
+
+  const { error } = await cloudStore.client
+    .from("wallet_requests")
+    .update({
+      payload: {
+        ...payload,
+        name,
+      },
+    })
+    .eq("id", requestId)
+    .eq("status", "pending");
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  await loadRequests();
+  render();
+  showToast("Request name updated.");
+}
+
 async function updateRequestStatus(requestId, status) {
   const { error } = await cloudStore.client
     .from("wallet_requests")
@@ -928,6 +980,7 @@ function renderRequests() {
         <td>${escapeHtml(getRequestDetails(request))}</td>
         <td>
           <div class="request-actions">
+            ${renderRequestEditButton(request)}
             <button class="approve-row" type="button" title="Approve request" aria-label="Approve request" data-approve-request="${escapeHtml(request.id)}">
               <i data-lucide="check" aria-hidden="true"></i>
             </button>
@@ -939,6 +992,16 @@ function renderRequests() {
       </tr>
     `)
     .join("");
+}
+
+function renderRequestEditButton(request) {
+  if (request.type !== "add_member") return "";
+
+  return `
+    <button class="edit-row" type="button" title="Edit member name" aria-label="Edit member name" data-edit-member-request="${escapeHtml(request.id)}">
+      <i data-lucide="pencil" aria-hidden="true"></i>
+    </button>
+  `;
 }
 
 function getRequestTypeLabel(type) {
