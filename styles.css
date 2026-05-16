@@ -287,6 +287,26 @@ h2 {
   margin-bottom: 16px;
 }
 
+.request-limit-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: var(--blue);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.request-limit-chip.is-empty {
+  border-color: #f1b8b2;
+  background: #fff5f4;
+  color: var(--red);
+}
+
 .stacked-form {
   display: grid;
   gap: 14px;

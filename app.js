@@ -1,5 +1,7 @@
 const STORAGE_KEY = "swipe-wallet-state-v1";
 const CLOUD_BACKUP_KEY = "swipe-wallet-last-cloud-state-v1";
+const REQUEST_LIMIT_STORAGE_KEY = "swipe-wallet-daily-request-count-v1";
+const DAILY_REQUEST_LIMIT = 5;
 const DEFAULT_SWIPE_PRICE = 12.5;
 const DEFAULT_DEVELOPER_QUOTE = "Swipe first, settle later, audit always. - Zhichao Chen";
 const MANAGER_DISPLAY_BALANCE = 100;
@@ -44,6 +46,7 @@ const els = {
   topupForm: document.querySelector("#topup-form"),
   memberForm: document.querySelector("#member-form"),
   requestForms: Array.from(document.querySelectorAll("[data-request-form]")),
+  requestLimitStatus: document.querySelector("#request-limit-status"),
   requestMealMembers: document.querySelector("#request-meal-members"),
   requestTopupPerson: document.querySelector("#request-topup-person"),
   requestTopupDate: document.querySelector("#request-topup-date"),
@@ -463,6 +466,12 @@ async function handleSubmitRequest(event) {
     return;
   }
 
+  if (getRemainingDailyRequests() <= 0) {
+    showToast("Daily request limit reached. Try again tomorrow.");
+    renderRequestLimitStatus();
+    return;
+  }
+
   const formData = new FormData(event.currentTarget);
   const type = String(formData.get("type") || "add_member");
   const note = String(formData.get("note") || "").trim();
@@ -532,6 +541,8 @@ async function handleSubmitRequest(event) {
 
   resetForm(event.currentTarget);
   resetDefaultDates();
+  incrementDailyRequestCount();
+  renderRequestLimitStatus();
   showToast("Request submitted for admin approval.");
 }
 
@@ -845,6 +856,25 @@ function syncControls() {
   if (document.activeElement !== els.quoteInput) {
     els.quoteInput.value = state.settings.quote;
   }
+  renderRequestLimitStatus();
+}
+
+function renderRequestLimitStatus() {
+  if (!els.requestLimitStatus) return;
+
+  const remaining = getRemainingDailyRequests();
+  const label =
+    remaining > 0
+      ? `${remaining} request${remaining === 1 ? "" : "s"} left today`
+      : "Daily request limit reached";
+
+  els.requestLimitStatus.textContent = label;
+  els.requestLimitStatus.classList.toggle("is-empty", remaining <= 0);
+
+  els.requestForms.forEach((form) => {
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = remaining <= 0;
+  });
 }
 
 function renderSummary() {
@@ -1547,6 +1577,37 @@ function setAdminSignInLoading(isLoading) {
   if (!els.adminSignIn || !els.adminSignInLabel) return;
   els.adminSignIn.disabled = isLoading;
   els.adminSignInLabel.textContent = isLoading ? "Opening Google" : "Sign in with Google";
+}
+
+function getDailyRequestState() {
+  const today = todayKey();
+
+  try {
+    const value = JSON.parse(window.localStorage.getItem(REQUEST_LIMIT_STORAGE_KEY) || "{}");
+    if (value.date === today && Number.isFinite(Number(value.count))) {
+      return { date: today, count: Math.max(0, Number(value.count)) };
+    }
+  } catch (error) {
+    // Ignore invalid local rate-limit data and start a fresh day.
+  }
+
+  return { date: today, count: 0 };
+}
+
+function getRemainingDailyRequests() {
+  const requestState = getDailyRequestState();
+  return Math.max(0, DAILY_REQUEST_LIMIT - requestState.count);
+}
+
+function incrementDailyRequestCount() {
+  const requestState = getDailyRequestState();
+  window.localStorage.setItem(
+    REQUEST_LIMIT_STORAGE_KEY,
+    JSON.stringify({
+      date: requestState.date,
+      count: requestState.count + 1,
+    }),
+  );
 }
 
 function cloneState(value) {
