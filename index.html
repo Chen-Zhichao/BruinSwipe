@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SwipeWallet</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="./config.js"></script>
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true">SW</span>
+        <div>
+          <h1>Bruin$wipe</h1>
+          <p>UCLA swipe balance tracker</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="sync-chip" id="sync-status">Local mode</div>
+        <form class="admin-login" id="admin-login-form">
+          <input id="admin-email" name="email" type="email" autocomplete="email" placeholder="Admin email" />
+          <button class="button secondary compact" type="submit">
+            <i data-lucide="log-in" aria-hidden="true"></i>
+            Sign in
+          </button>
+        </form>
+        <button class="button secondary compact" id="admin-logout" type="button">
+          <i data-lucide="log-out" aria-hidden="true"></i>
+          Sign out
+        </button>
+        <button class="button secondary" id="export-data" type="button">
+          <i data-lucide="download" aria-hidden="true"></i>
+          Export
+        </button>
+        <label class="button secondary file-button admin-required" for="import-data">
+          <i data-lucide="upload" aria-hidden="true"></i>
+          Import
+        </label>
+        <input id="import-data" class="visually-hidden" type="file" accept="application/json" />
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="summary-grid" aria-label="Wallet summary">
+        <article class="metric-tile">
+          <span class="metric-label">Total balance</span>
+          <strong id="metric-total-balance">$0.00</strong>
+        </article>
+        <article class="metric-tile">
+          <span class="metric-label">This week swipes</span>
+          <strong id="metric-week-swipes">0</strong>
+        </article>
+        <article class="metric-tile">
+          <span class="metric-label">Low balances</span>
+          <strong id="metric-low-balances">0</strong>
+        </article>
+        <article class="metric-tile">
+          <span class="metric-label">Members</span>
+          <strong id="metric-members">0</strong>
+        </article>
+      </section>
+
+      <section class="workspace-grid" aria-label="Swipe wallet workspace">
+        <section class="panel balance-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Balances</h2>
+              <p>Sorted by lowest balance</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Balance</th>
+                  <th>Status</th>
+                  <th>Last activity</th>
+                  <th aria-label="Actions"></th>
+                </tr>
+              </thead>
+              <tbody id="balances-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel form-panel edit-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Record Meal</h2>
+              <p>Charge one swipe to each selected member</p>
+            </div>
+          </div>
+          <form id="meal-form" class="stacked-form">
+            <div class="form-row">
+              <label>
+                Date
+                <input id="meal-date" name="date" type="date" required />
+              </label>
+              <label>
+                Meal
+                <select id="meal-name" name="mealName">
+                  <option value="Breakfast">Breakfast</option>
+                  <option value="Lunch">Lunch</option>
+                  <option value="Dinner">Dinner</option>
+                  <option value="Late night">Late night</option>
+                </select>
+              </label>
+            </div>
+            <div class="form-row">
+              <label>
+                Swipe price
+                <input id="meal-price" name="price" type="number" min="0.01" step="0.01" required />
+              </label>
+              <label>
+                Note
+                <input id="meal-note" name="note" type="text" maxlength="80" placeholder="Optional" />
+              </label>
+            </div>
+            <fieldset>
+              <legend>Members</legend>
+              <div id="meal-members" class="member-picker"></div>
+            </fieldset>
+            <button class="button primary" type="submit">
+              <i data-lucide="utensils" aria-hidden="true"></i>
+              Record meal
+            </button>
+          </form>
+        </section>
+
+        <section class="panel form-panel edit-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Top Up</h2>
+              <p>Record Zelle or cash credit</p>
+            </div>
+          </div>
+          <form id="topup-form" class="stacked-form">
+            <label>
+              Member
+              <select id="topup-person" name="personId" required></select>
+            </label>
+            <div class="form-row">
+              <label>
+                Amount
+                <input id="topup-amount" name="amount" type="number" min="0.01" step="0.01" required />
+              </label>
+              <label>
+                Date
+                <input id="topup-date" name="date" type="date" required />
+              </label>
+            </div>
+            <label>
+              Note
+              <input id="topup-note" name="note" type="text" maxlength="80" placeholder="Zelle, Venmo, cash" />
+            </label>
+            <button class="button primary" type="submit">
+              <i data-lucide="wallet" aria-hidden="true"></i>
+              Record top-up
+            </button>
+          </form>
+        </section>
+
+        <section class="panel form-panel edit-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Add Member</h2>
+              <p>Keep names short for the weekly view</p>
+            </div>
+          </div>
+          <form id="member-form" class="stacked-form">
+            <label>
+              Name
+              <input id="member-name" name="name" type="text" maxlength="40" autocomplete="off" required />
+            </label>
+            <label>
+              Contact
+              <input id="member-contact" name="contact" type="text" maxlength="60" autocomplete="off" placeholder="Optional" />
+            </label>
+            <label class="checkbox-field">
+              <input id="member-organizer" name="isOrganizer" type="checkbox" />
+              <span>Organizer, exclude from balances</span>
+            </label>
+            <button class="button primary" type="submit">
+              <i data-lucide="user-plus" aria-hidden="true"></i>
+              Add member
+            </button>
+          </form>
+        </section>
+      </section>
+
+      <section class="panel wide-panel">
+        <div class="panel-heading week-heading">
+          <div>
+            <h2>Weekly Swipes</h2>
+            <p id="week-range">This week</p>
+          </div>
+          <div class="week-controls">
+            <button class="icon-button" id="previous-week" type="button" title="Previous week" aria-label="Previous week">
+              <i data-lucide="chevron-left" aria-hidden="true"></i>
+            </button>
+            <button class="button secondary compact" id="current-week" type="button">
+              <i data-lucide="calendar-days" aria-hidden="true"></i>
+              Current
+            </button>
+            <button class="icon-button" id="next-week" type="button" title="Next week" aria-label="Next week">
+              <i data-lucide="chevron-right" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        <div id="week-grid" class="week-grid"></div>
+      </section>
+
+      <section class="panel wide-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Ledger</h2>
+            <p>Every balance change</p>
+          </div>
+          <button class="button danger compact admin-required" id="reset-data" type="button">
+            <i data-lucide="trash-2" aria-hidden="true"></i>
+            Reset
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Member</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th aria-label="Actions"></th>
+              </tr>
+            </thead>
+            <tbody id="ledger-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
