@@ -751,12 +751,13 @@ function changeWeek(dayDelta) {
 
 function render() {
   const mealAwards = getMealAwardMap();
+  const topupAwards = getTopupAwardMap();
 
   updateAccessMode();
   syncControls();
   renderSummary();
-  renderBalances(mealAwards);
-  renderMembers(mealAwards);
+  renderBalances(mealAwards, topupAwards);
+  renderMembers(mealAwards, topupAwards);
   renderRequests();
   renderWeek();
   renderLedger();
@@ -868,7 +869,7 @@ function renderSummary() {
   els.members.textContent = String(getBillablePeople().length);
 }
 
-function renderBalances(mealAwards = getMealAwardMap()) {
+function renderBalances(mealAwards = getMealAwardMap(), topupAwards = getTopupAwardMap()) {
   const rows = getBalanceRows({ includeOrganizers: true }).sort(
     (a, b) => a.balance - b.balance || a.name.localeCompare(b.name),
   );
@@ -903,6 +904,7 @@ function renderBalances(mealAwards = getMealAwardMap()) {
             <div class="member-name-line">
               <strong>${escapeHtml(row.name)}</strong>
               ${isOrganizer ? '<span class="role-tag">manager</span>' : ""}
+              ${renderTopupAwards(row.id, topupAwards)}
               ${renderMealAwards(row.id, mealAwards)}
             </div>
             ${row.contact ? `<div class="empty-state">${escapeHtml(row.contact)}</div>` : ""}
@@ -917,7 +919,7 @@ function renderBalances(mealAwards = getMealAwardMap()) {
     .join("");
 }
 
-function renderMembers(mealAwards = getMealAwardMap()) {
+function renderMembers(mealAwards = getMealAwardMap(), topupAwards = getTopupAwardMap()) {
   if (!els.membersBody) return;
 
   const people = state.people
@@ -952,6 +954,7 @@ function renderMembers(mealAwards = getMealAwardMap()) {
           <td>
             <div class="member-name-line">
               <strong>${escapeHtml(person.name)}</strong>
+              ${renderTopupAwards(person.id, topupAwards)}
               ${renderMealAwards(person.id, mealAwards)}
             </div>
           </td>
@@ -1199,6 +1202,37 @@ function getTopMealCounts(startKey, endKey, eligibleIds) {
     if (count === topCount) winners.set(personId, count);
   });
   return winners;
+}
+
+function getTopupAwardMap() {
+  const eligibleIds = new Set(getBillablePeople().map((person) => person.id));
+  const totals = new Map();
+
+  state.transactions.forEach((transaction) => {
+    if (transaction.type !== "topup" || !eligibleIds.has(transaction.personId)) return;
+    totals.set(transaction.personId, roundMoney((totals.get(transaction.personId) || 0) + transaction.amount));
+  });
+
+  const topAmount = Math.max(0, ...totals.values());
+  if (topAmount === 0) return new Map();
+
+  const winners = new Map();
+  totals.forEach((amount, personId) => {
+    if (amount === topAmount) winners.set(personId, amount);
+  });
+  return winners;
+}
+
+function renderTopupAwards(personId, topupAwards) {
+  const amount = topupAwards.get(personId);
+  if (!amount) return "";
+
+  const title = `Most total top-ups: ${currency.format(amount)}`;
+  return `
+    <span class="diamond-badge" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">
+      <span aria-hidden="true">💎</span>
+    </span>
+  `;
 }
 
 function renderMealAwards(personId, mealAwards) {

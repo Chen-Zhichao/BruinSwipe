@@ -485,6 +485,18 @@ tbody tr:last-child td {
   color: var(--teal-dark);
 }
 
+.diamond-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #b7c9f8;
+  border-radius: 999px;
+  background: #eff6ff;
+  font-size: 14px;
+  line-height: 1;
+}
+
 .award-icon {
   width: 14px;
   flex: 0 0 14px;
