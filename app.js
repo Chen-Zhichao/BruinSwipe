@@ -45,8 +45,7 @@ const els = {
   mealForm: document.querySelector("#meal-form"),
   topupForm: document.querySelector("#topup-form"),
   memberForm: document.querySelector("#member-form"),
-  requestForm: document.querySelector("#request-form"),
-  requestType: document.querySelector("#request-type"),
+  requestForms: Array.from(document.querySelectorAll("[data-request-form]")),
   requestMealMembers: document.querySelector("#request-meal-members"),
   requestTopupPerson: document.querySelector("#request-topup-person"),
   requestTopupDate: document.querySelector("#request-topup-date"),
@@ -79,8 +78,9 @@ function bindEvents() {
   els.quoteForm.addEventListener("submit", handleQuoteSave);
   els.topupForm.addEventListener("submit", handleTopup);
   els.mealForm.addEventListener("submit", handleMeal);
-  els.requestForm.addEventListener("submit", handleSubmitRequest);
-  els.requestType.addEventListener("change", renderRequestFields);
+  els.requestForms.forEach((form) => {
+    form.addEventListener("submit", handleSubmitRequest);
+  });
   els.adminLoginForm.addEventListener("submit", handleAdminLogin);
   els.adminLogout.addEventListener("click", handleAdminLogout);
   els.exportData.addEventListener("click", exportState);
@@ -553,7 +553,6 @@ async function handleSubmitRequest(event) {
 
   resetForm(event.currentTarget);
   resetDefaultDates();
-  renderRequestFields();
   showToast("Request submitted for admin approval.");
 }
 
@@ -818,7 +817,6 @@ function syncControls() {
   if (document.activeElement !== els.quoteInput) {
     els.quoteInput.value = state.settings.quote;
   }
-  renderRequestFields();
 }
 
 function renderSummary() {
@@ -959,13 +957,6 @@ function renderRequests() {
       </tr>
     `)
     .join("");
-}
-
-function renderRequestFields() {
-  const selectedType = els.requestType.value || "add_member";
-  document.querySelectorAll("[data-request-fields]").forEach((section) => {
-    section.classList.toggle("active", section.dataset.requestFields === selectedType);
-  });
 }
 
 function getRequestTypeLabel(type) {
