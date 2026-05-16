@@ -1,7 +1,5 @@
 const STORAGE_KEY = "swipe-wallet-state-v1";
 const CLOUD_BACKUP_KEY = "swipe-wallet-last-cloud-state-v1";
-const LOGIN_COOLDOWN_KEY = "swipe-wallet-login-cooldown-until";
-const LOGIN_COOLDOWN_SECONDS = 60;
 const DEFAULT_SWIPE_PRICE = 12.5;
 const DEFAULT_DEVELOPER_QUOTE = "Swipe first, settle later, audit always. - Zhichao Chen";
 
@@ -24,7 +22,6 @@ let requests = [];
 let cloudStore = null;
 let visibleWeekStart = getWeekStart(new Date());
 let toastTimer = null;
-let loginCooldownTimer = null;
 let authSubscription = null;
 
 const els = {
@@ -52,7 +49,6 @@ const els = {
   requestMealDate: document.querySelector("#request-meal-date"),
   requestMealPrice: document.querySelector("#request-meal-price"),
   adminLoginForm: document.querySelector("#admin-login-form"),
-  adminEmail: document.querySelector("#admin-email"),
   adminSignIn: document.querySelector("#admin-sign-in"),
   adminSignInLabel: document.querySelector("#admin-sign-in-label"),
   adminLogout: document.querySelector("#admin-logout"),
@@ -139,7 +135,6 @@ async function initializeApp() {
   }
 
   document.body.classList.add("cloud-mode");
-  updateLoginCooldown();
   updateAccessMode();
   updateSyncStatus("Connecting", "local");
   await refreshSession();
@@ -290,42 +285,19 @@ async function handleAdminLogin(event) {
   event.preventDefault();
   if (!cloudStore) return;
 
-  if (getLoginCooldownRemaining() > 0) {
-    showToast(`Wait ${getLoginCooldownRemaining()}s before requesting another email.`);
-    return;
-  }
-
-  const email = els.adminEmail.value.trim().toLowerCase();
-  if (!email) {
-    showToast("Enter the admin email.");
-    return;
-  }
-
-  if (cloudStore.adminEmail && email !== cloudStore.adminEmail) {
-    showToast("Use the configured admin email.");
-    return;
-  }
-
-  const { error } = await cloudStore.client.auth.signInWithOtp({
-    email,
+  setAdminSignInLoading(true);
+  const { error } = await cloudStore.client.auth.signInWithOAuth({
+    provider: "google",
     options: {
-      emailRedirectTo: window.location.href.split("#")[0],
+      redirectTo: window.location.href.split("#")[0],
     },
   });
 
   if (error) {
-    if (error.message.toLowerCase().includes("rate limit")) {
-      startLoginCooldown();
-      showToast("Email rate limit exceeded. Wait about one minute, then try once.");
-    } else {
-      showToast(error.message);
-    }
+    setAdminSignInLoading(false);
+    showToast(error.message);
     return;
   }
-
-  startLoginCooldown();
-  els.adminLoginForm.reset();
-  showToast("Check your email for the sign-in link.");
 }
 
 async function handleAdminLogout() {
@@ -1385,33 +1357,10 @@ function updateSyncStatus(message, tone) {
   }
 }
 
-function startLoginCooldown() {
-  const cooldownUntil = Date.now() + LOGIN_COOLDOWN_SECONDS * 1000;
-  window.localStorage.setItem(LOGIN_COOLDOWN_KEY, String(cooldownUntil));
-  updateLoginCooldown();
-}
-
-function getLoginCooldownRemaining() {
-  const cooldownUntil = Number(window.localStorage.getItem(LOGIN_COOLDOWN_KEY) || 0);
-  return Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
-}
-
-function updateLoginCooldown() {
-  window.clearTimeout(loginCooldownTimer);
-
-  const remaining = getLoginCooldownRemaining();
+function setAdminSignInLoading(isLoading) {
   if (!els.adminSignIn || !els.adminSignInLabel) return;
-
-  if (remaining <= 0) {
-    els.adminSignIn.disabled = false;
-    els.adminSignInLabel.textContent = "Sign in";
-    window.localStorage.removeItem(LOGIN_COOLDOWN_KEY);
-    return;
-  }
-
-  els.adminSignIn.disabled = true;
-  els.adminSignInLabel.textContent = `Wait ${remaining}s`;
-  loginCooldownTimer = window.setTimeout(updateLoginCooldown, 1000);
+  els.adminSignIn.disabled = isLoading;
+  els.adminSignInLabel.textContent = isLoading ? "Opening Google" : "Sign in with Google";
 }
 
 function cloneState(value) {

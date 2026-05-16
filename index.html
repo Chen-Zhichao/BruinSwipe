@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SwipeWallet</title>
-    <link rel="stylesheet" href="./styles.css?v=20260516-user-layout" />
+    <title>Bruin$wipe</title>
+    <link rel="stylesheet" href="./styles.css?v=20260516-google-oauth" />
     <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="./config.js?v=20260516-user-layout"></script>
-    <script defer src="./app.js?v=20260516-user-layout"></script>
+    <script defer src="./config.js?v=20260516-google-oauth"></script>
+    <script defer src="./app.js?v=20260516-google-oauth"></script>
   </head>
   <body>
     <header class="app-header">
@@ -23,10 +23,9 @@
       <div class="header-actions">
         <div class="sync-chip" id="sync-status">Local mode</div>
         <form class="admin-login" id="admin-login-form">
-          <input id="admin-email" name="email" type="email" autocomplete="email" placeholder="Admin email" />
           <button class="button secondary compact" id="admin-sign-in" type="submit">
             <i data-lucide="log-in" aria-hidden="true"></i>
-            <span id="admin-sign-in-label">Sign in</span>
+            <span id="admin-sign-in-label">Sign in with Google</span>
           </button>
         </form>
         <button class="button secondary compact" id="admin-logout" type="button">

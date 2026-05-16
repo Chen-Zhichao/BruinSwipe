@@ -65,9 +65,30 @@ In cloud mode:
 
 - Everyone can open the page and read balances.
 - Everyone can submit requests.
-- Only the configured admin email can sign in and edit the ledger.
+- Only the configured admin Google account can sign in and edit the ledger.
 - Only the admin can approve requests, and approved requests are the only ones that affect balances.
 - Updates are pushed to other open browsers through Supabase Realtime.
+
+## Admin Google sign-in
+
+Admin sign-in uses Supabase Google OAuth, so it does not send email magic links.
+
+1. In Supabase, open **Authentication > Providers > Google**.
+2. Copy the callback URL shown there.
+3. In Google Cloud, create a **Web application** OAuth client.
+4. Add the GitHub Pages origin as an authorized JavaScript origin:
+
+```text
+https://chen-zhichao.github.io
+```
+
+5. Add the Supabase callback URL as an authorized redirect URI.
+6. Copy the Google client ID and client secret back into the Supabase Google provider settings.
+7. In Supabase **Authentication > URL Configuration**, set the site URL and redirect URL to:
+
+```text
+https://chen-zhichao.github.io/BruinSwipe/
+```
 
 ## Organizer account
 
