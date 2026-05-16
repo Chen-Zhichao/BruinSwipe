@@ -17,6 +17,7 @@ const weekday = new Intl.DateTimeFormat("en-US", {
 });
 
 let state = createEmptyState();
+let requests = [];
 let cloudStore = null;
 let visibleWeekStart = getWeekStart(new Date());
 let toastTimer = null;
@@ -25,6 +26,7 @@ let authSubscription = null;
 const els = {
   balancesBody: document.querySelector("#balances-body"),
   membersBody: document.querySelector("#members-body"),
+  requestsBody: document.querySelector("#requests-body"),
   ledgerBody: document.querySelector("#ledger-body"),
   mealMembers: document.querySelector("#meal-members"),
   weekGrid: document.querySelector("#week-grid"),
@@ -36,6 +38,13 @@ const els = {
   mealForm: document.querySelector("#meal-form"),
   topupForm: document.querySelector("#topup-form"),
   memberForm: document.querySelector("#member-form"),
+  requestForm: document.querySelector("#request-form"),
+  requestType: document.querySelector("#request-type"),
+  requestMealMembers: document.querySelector("#request-meal-members"),
+  requestTopupPerson: document.querySelector("#request-topup-person"),
+  requestTopupDate: document.querySelector("#request-topup-date"),
+  requestMealDate: document.querySelector("#request-meal-date"),
+  requestMealPrice: document.querySelector("#request-meal-price"),
   adminLoginForm: document.querySelector("#admin-login-form"),
   adminEmail: document.querySelector("#admin-email"),
   adminLogout: document.querySelector("#admin-logout"),
@@ -60,6 +69,8 @@ function bindEvents() {
   els.memberForm.addEventListener("submit", handleAddMember);
   els.topupForm.addEventListener("submit", handleTopup);
   els.mealForm.addEventListener("submit", handleMeal);
+  els.requestForm.addEventListener("submit", handleSubmitRequest);
+  els.requestType.addEventListener("change", renderRequestFields);
   els.adminLoginForm.addEventListener("submit", handleAdminLogin);
   els.adminLogout.addEventListener("click", handleAdminLogout);
   els.exportData.addEventListener("click", exportState);
@@ -89,6 +100,20 @@ function bindEvents() {
     if (!button) return;
     deletePerson(button.dataset.deletePerson);
   });
+
+  els.requestsBody.addEventListener("click", (event) => {
+    const approveButton = event.target.closest("[data-approve-request]");
+    const rejectButton = event.target.closest("[data-reject-request]");
+
+    if (approveButton) {
+      approveRequest(approveButton.dataset.approveRequest);
+      return;
+    }
+
+    if (rejectButton) {
+      rejectRequest(rejectButton.dataset.rejectRequest);
+    }
+  });
 }
 
 async function initializeApp() {
@@ -108,7 +133,9 @@ async function initializeApp() {
   updateSyncStatus("Connecting", "local");
   await refreshSession();
   await loadCloudState();
+  await loadRequests();
   subscribeToCloudState();
+  subscribeToRequests();
   render();
 }
 
@@ -122,6 +149,7 @@ function createCloudStore() {
     adminEmail: config.adminEmail ? String(config.adminEmail).toLowerCase() : "",
     channel: null,
     client: window.supabase.createClient(config.url, config.anonKey),
+    requestChannel: null,
     session: null,
     walletId: config.walletId || "main",
   };
@@ -141,9 +169,11 @@ async function refreshSession() {
   updateAccessMode();
 
   if (!authSubscription) {
-    const { data: listener } = cloudStore.client.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = cloudStore.client.auth.onAuthStateChange(async (_event, session) => {
       cloudStore.session = session;
       updateAccessMode();
+      await loadRequests();
+      subscribeToRequests();
       render();
     });
     authSubscription = listener.subscription;
@@ -200,6 +230,49 @@ function subscribeToCloudState() {
         );
       }
     });
+}
+
+async function loadRequests() {
+  if (!cloudStore || !canEdit()) {
+    requests = [];
+    return;
+  }
+
+  const { data, error } = await cloudStore.client
+    .from("wallet_requests")
+    .select("id,type,payload,created_at")
+    .eq("wallet_id", cloudStore.walletId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    requests = [];
+    showToast(error.message);
+    return;
+  }
+
+  requests = data || [];
+}
+
+function subscribeToRequests() {
+  if (!cloudStore || cloudStore.requestChannel || !canEdit()) return;
+
+  cloudStore.requestChannel = cloudStore.client
+    .channel(`wallet_requests:${cloudStore.walletId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "wallet_requests",
+        filter: `wallet_id=eq.${cloudStore.walletId}`,
+      },
+      async () => {
+        await loadRequests();
+        render();
+      },
+    )
+    .subscribe();
 }
 
 async function handleAdminLogin(event) {
@@ -364,6 +437,221 @@ async function handleMeal(event) {
   );
 }
 
+async function handleSubmitRequest(event) {
+  event.preventDefault();
+
+  if (!cloudStore) {
+    showToast("Requests require cloud mode.");
+    return;
+  }
+
+  const formData = new FormData(event.currentTarget);
+  const type = String(formData.get("type") || "add_member");
+  const note = String(formData.get("note") || "").trim();
+  let payload = null;
+
+  if (type === "add_member") {
+    const name = String(formData.get("name") || "").trim();
+    const contact = String(formData.get("contact") || "").trim();
+
+    if (!name) {
+      showToast("Enter your name.");
+      return;
+    }
+
+    payload = { name, contact, note };
+  }
+
+  if (type === "topup") {
+    const personId = String(formData.get("topupPersonId") || "");
+    const amount = Number(formData.get("topupAmount"));
+    const date = String(formData.get("topupDate") || todayKey());
+
+    if (!getBillablePeople().some((person) => person.id === personId)) {
+      showToast("Choose a member.");
+      return;
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showToast("Enter a positive top-up amount.");
+      return;
+    }
+
+    payload = { personId, amount: roundMoney(amount), date, note };
+  }
+
+  if (type === "meal") {
+    const date = String(formData.get("mealDate") || todayKey());
+    const mealName = String(formData.get("mealName") || "Meal");
+    const price = Number(formData.get("mealPrice"));
+    const personIds = Array.from(
+      els.requestMealMembers.querySelectorAll("input[type='checkbox']:checked"),
+    ).map((input) => input.value);
+
+    if (!Number.isFinite(price) || price <= 0) {
+      showToast("Enter a positive swipe price.");
+      return;
+    }
+
+    if (personIds.length === 0) {
+      showToast("Select at least one member.");
+      return;
+    }
+
+    payload = { personIds, date, mealName, price: roundMoney(price), note };
+  }
+
+  const { error } = await cloudStore.client.from("wallet_requests").insert({
+    wallet_id: cloudStore.walletId,
+    type,
+    payload,
+  });
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  resetForm(event.currentTarget);
+  resetDefaultDates();
+  renderRequestFields();
+  showToast("Request submitted for admin approval.");
+}
+
+async function approveRequest(requestId) {
+  if (!ensureCanEdit()) return;
+
+  const request = requests.find((item) => item.id === requestId);
+  if (!request) return;
+
+  const nextState = cloneState(state);
+  const result = applyRequestToState(nextState, request);
+
+  if (!result.ok) {
+    showToast(result.message);
+    return;
+  }
+
+  const saved = await commitState(nextState, "Request approved.");
+  if (!saved) return;
+
+  await updateRequestStatus(requestId, "approved");
+}
+
+async function rejectRequest(requestId) {
+  if (!ensureCanEdit()) return;
+  if (!window.confirm("Reject this request?")) return;
+  await updateRequestStatus(requestId, "rejected");
+  showToast("Request rejected.");
+}
+
+async function updateRequestStatus(requestId, status) {
+  const { error } = await cloudStore.client
+    .from("wallet_requests")
+    .update({
+      status,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: cloudStore.session?.user?.email || "",
+    })
+    .eq("id", requestId);
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  await loadRequests();
+  render();
+}
+
+function applyRequestToState(nextState, request) {
+  const payload = request.payload || {};
+
+  if (request.type === "add_member") {
+    const name = String(payload.name || "").trim();
+    const contact = String(payload.contact || "").trim();
+
+    if (!name) return { ok: false, message: "Request has no name." };
+
+    const exists = nextState.people.some(
+      (person) => person.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (exists) return { ok: false, message: "That member already exists." };
+
+    nextState.people.push({
+      id: createId("person"),
+      name,
+      contact,
+      role: "member",
+      createdAt: new Date().toISOString(),
+    });
+
+    return { ok: true };
+  }
+
+  if (request.type === "topup") {
+    const personId = String(payload.personId || "");
+    const amount = Number(payload.amount);
+    const date = String(payload.date || todayKey());
+    const note = String(payload.note || "").trim();
+
+    if (!nextState.people.some((person) => person.id === personId && person.role !== "organizer")) {
+      return { ok: false, message: "Top-up member is missing." };
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0 || !isDateKey(date)) {
+      return { ok: false, message: "Top-up request is invalid." };
+    }
+
+    nextState.transactions.push({
+      id: createId("txn"),
+      personId,
+      type: "topup",
+      date,
+      amount: roundMoney(amount),
+      description: note || "Top-up",
+      createdAt: new Date().toISOString(),
+    });
+
+    return { ok: true };
+  }
+
+  if (request.type === "meal") {
+    const personIds = Array.isArray(payload.personIds) ? payload.personIds.map(String) : [];
+    const date = String(payload.date || todayKey());
+    const mealName = String(payload.mealName || "Meal");
+    const price = Number(payload.price);
+    const note = String(payload.note || "").trim();
+
+    if (!Number.isFinite(price) || price <= 0 || !isDateKey(date) || personIds.length === 0) {
+      return { ok: false, message: "Meal request is invalid." };
+    }
+
+    nextState.settings.swipePrice = roundMoney(price);
+
+    personIds.forEach((personId) => {
+      const person = nextState.people.find((item) => item.id === personId);
+      if (!person) return;
+
+      nextState.transactions.push({
+        id: createId("txn"),
+        personId,
+        type: "meal",
+        date,
+        amount: person.role === "organizer" ? 0 : roundMoney(-price),
+        price: roundMoney(price),
+        description: note || `${mealName} swipe`,
+        mealName,
+        createdAt: new Date().toISOString(),
+      });
+    });
+
+    return { ok: true };
+  }
+
+  return { ok: false, message: "Unknown request type." };
+}
+
 async function deleteTransaction(transactionId) {
   if (!ensureCanEdit()) return;
 
@@ -404,6 +692,7 @@ function render() {
   renderSummary();
   renderBalances();
   renderMembers();
+  renderRequests();
   renderWeek();
   renderLedger();
   refreshIcons();
@@ -421,27 +710,59 @@ function syncControls() {
     ? peopleOptions
     : '<option value="">Add a paying member first</option>';
   els.topupPerson.disabled = billablePeople.length === 0;
+  els.requestTopupPerson.innerHTML = billablePeople.length
+    ? peopleOptions
+    : '<option value="">No paying members yet</option>';
+  els.requestTopupPerson.disabled = billablePeople.length === 0;
 
   const checkedIds = new Set(
     Array.from(els.mealMembers.querySelectorAll("input[type='checkbox']:checked")).map(
       (input) => input.value,
     ),
   );
+  const requestCheckedIds = new Set(
+    Array.from(els.requestMealMembers.querySelectorAll("input[type='checkbox']:checked")).map(
+      (input) => input.value,
+    ),
+  );
 
   if (state.people.length === 0) {
     els.mealMembers.innerHTML = '<p class="empty-state">No members yet.</p>';
+    els.requestMealMembers.innerHTML = '<p class="empty-state">No members yet.</p>';
   } else {
-    els.mealMembers.innerHTML = state.people
+    const memberChecks = state.people
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((person) => {
-        const checked = checkedIds.has(person.id) ? "checked" : "";
+      .map((person, index) => {
         const roleTag =
           person.role === "organizer" ? '<span class="role-tag">organizer</span>' : "";
+
+        return {
+          id: person.id,
+          label: `${escapeHtml(person.name)}${roleTag}`,
+          sortIndex: index,
+        };
+      });
+
+    els.mealMembers.innerHTML = memberChecks
+      .map((person) => {
+        const checked = checkedIds.has(person.id) ? "checked" : "";
         return `
           <label class="member-check">
             <input type="checkbox" value="${escapeHtml(person.id)}" ${checked} />
-            <span>${escapeHtml(person.name)}${roleTag}</span>
+            <span>${person.label}</span>
+          </label>
+        `;
+      })
+      .join("");
+
+    els.requestMealMembers.innerHTML = memberChecks
+      .map((person) => {
+        const checked = requestCheckedIds.has(person.id) ? "checked" : "";
+        return `
+          <label class="member-check">
+            <input type="checkbox" value="${escapeHtml(person.id)}" ${checked} />
+            <span>${person.label}</span>
           </label>
         `;
       })
@@ -451,6 +772,10 @@ function syncControls() {
   if (!els.mealDate.value) els.mealDate.value = todayKey();
   if (!els.topupDate.value) els.topupDate.value = todayKey();
   if (!els.mealPrice.value) els.mealPrice.value = state.settings.swipePrice.toFixed(2);
+  if (!els.requestTopupDate.value) els.requestTopupDate.value = todayKey();
+  if (!els.requestMealDate.value) els.requestMealDate.value = todayKey();
+  if (!els.requestMealPrice.value) els.requestMealPrice.value = state.settings.swipePrice.toFixed(2);
+  renderRequestFields();
 }
 
 function renderSummary() {
@@ -558,6 +883,77 @@ function renderMembers() {
       `;
     })
     .join("");
+}
+
+function renderRequests() {
+  if (!els.requestsBody) return;
+
+  if (requests.length === 0) {
+    els.requestsBody.innerHTML = `
+      <tr>
+        <td colspan="4" class="empty-state">No pending requests.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  els.requestsBody.innerHTML = requests
+    .map((request) => `
+      <tr>
+        <td>${escapeHtml(formatDateTimeLabel(request.created_at))}</td>
+        <td><span class="type-pill type-${request.type === "topup" ? "topup" : "meal"}">${escapeHtml(getRequestTypeLabel(request.type))}</span></td>
+        <td>${escapeHtml(getRequestDetails(request))}</td>
+        <td>
+          <div class="request-actions">
+            <button class="approve-row" type="button" title="Approve request" aria-label="Approve request" data-approve-request="${escapeHtml(request.id)}">
+              <i data-lucide="check" aria-hidden="true"></i>
+            </button>
+            <button class="reject-row" type="button" title="Reject request" aria-label="Reject request" data-reject-request="${escapeHtml(request.id)}">
+              <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `)
+    .join("");
+}
+
+function renderRequestFields() {
+  const selectedType = els.requestType.value || "add_member";
+  document.querySelectorAll("[data-request-fields]").forEach((section) => {
+    section.classList.toggle("active", section.dataset.requestFields === selectedType);
+  });
+}
+
+function getRequestTypeLabel(type) {
+  if (type === "add_member") return "Add member";
+  if (type === "topup") return "Top-up";
+  if (type === "meal") return "Meal";
+  return "Request";
+}
+
+function getRequestDetails(request) {
+  const payload = request.payload || {};
+
+  if (request.type === "add_member") {
+    return `Add ${payload.name || "Unknown"}${payload.contact ? ` (${payload.contact})` : ""}${payload.note ? ` - ${payload.note}` : ""}`;
+  }
+
+  if (request.type === "topup") {
+    const person = state.people.find((item) => item.id === payload.personId);
+    return `${person ? person.name : "Unknown"} +${currency.format(Number(payload.amount || 0))} on ${formatDateLabel(payload.date || todayKey())}${payload.note ? ` - ${payload.note}` : ""}`;
+  }
+
+  if (request.type === "meal") {
+    const names = Array.isArray(payload.personIds)
+      ? payload.personIds
+          .map((personId) => state.people.find((item) => item.id === personId)?.name || "Unknown")
+          .join(", ")
+      : "Unknown";
+    return `${payload.mealName || "Meal"} on ${formatDateLabel(payload.date || todayKey())}: ${names} x ${currency.format(Number(payload.price || 0))}${payload.note ? ` - ${payload.note}` : ""}`;
+  }
+
+  return "";
 }
 
 function renderWeek() {
@@ -899,6 +1295,9 @@ function resetDefaultDates() {
   els.mealDate.value = todayKey();
   els.topupDate.value = todayKey();
   els.mealPrice.value = state.settings.swipePrice.toFixed(2);
+  els.requestTopupDate.value = todayKey();
+  els.requestMealDate.value = todayKey();
+  els.requestMealPrice.value = state.settings.swipePrice.toFixed(2);
 }
 
 function resetForm(form) {
@@ -999,6 +1398,15 @@ function getWeekStart(date) {
 
 function formatDateLabel(dateKey) {
   return shortDate.format(parseDateKey(dateKey));
+}
+
+function formatDateTimeLabel(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "-";
+  return `${shortDate.format(date)} ${date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
 }
 
 function roundMoney(value) {

@@ -11,6 +11,7 @@ SwipeWallet tracks prepaid balances for UCLA meal swipes.
 - Show a Monday-Sunday weekly swipe view.
 - Export and import a JSON backup.
 - Optional Supabase cloud sync so friends can open the same URL and see live balances.
+- Let friends submit add/top-up/swipe requests for admin approval.
 
 ## Run locally
 
@@ -63,7 +64,9 @@ service role key in frontend code.
 In cloud mode:
 
 - Everyone can open the page and read balances.
+- Everyone can submit requests.
 - Only the configured admin email can sign in and edit the ledger.
+- Only the admin can approve requests, and approved requests are the only ones that affect balances.
 - Updates are pushed to other open browsers through Supabase Realtime.
 
 ## Organizer account
