@@ -1,6 +1,6 @@
-# Bruin$wipe🍚
+# Bruin$wipe🐻🍚
 
-Bruin$wipe🍚 tracks prepaid balances for UCLA meal swipes.
+Bruin$wipe🐻🍚 tracks prepaid balances for UCLA meal swipes.
 
 ## What it does
 
