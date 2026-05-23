@@ -418,6 +418,9 @@ async function handleMeal(event) {
   event.preventDefault();
   if (!ensureCanEdit()) return;
 
+  const form = event.currentTarget;
+  if (form.dataset.submitting === "true") return;
+
   const formData = new FormData(event.currentTarget);
   const date = String(formData.get("date") || todayKey());
   const mealName = String(formData.get("mealName") || "Meal");
@@ -457,12 +460,20 @@ async function handleMeal(event) {
     });
   });
 
-  resetForm(event.currentTarget);
-  resetDefaultDates();
-  await commitState(
-    nextState,
-    `Recorded ${selectedPeople.length} swipe${selectedPeople.length === 1 ? "" : "s"}.`,
-  );
+  setFormSubmitting(form, true, "Recording...");
+  try {
+    const saved = await commitState(
+      nextState,
+      `Recorded ${selectedPeople.length} swipe${selectedPeople.length === 1 ? "" : "s"}.`,
+    );
+
+    if (saved) {
+      resetForm(form);
+      resetDefaultDates();
+    }
+  } finally {
+    setFormSubmitting(form, false);
+  }
 }
 
 async function handleSubmitRequest(event) {
@@ -1428,8 +1439,10 @@ async function saveState() {
     return true;
   }
 
+  await refreshSession();
+
   if (!canEdit()) {
-    showToast("Sign in as admin to edit.");
+    showToast("Sign in as admin to edit. If you were signed in, tap Sign in with Google again.");
     return false;
   }
 
@@ -1611,6 +1624,29 @@ function setAdminSignInLoading(isLoading) {
   if (!els.adminSignIn || !els.adminSignInLabel) return;
   els.adminSignIn.disabled = isLoading;
   els.adminSignInLabel.textContent = isLoading ? "Opening Google" : "Sign in with Google";
+}
+
+function setFormSubmitting(form, isSubmitting, label = "Saving...") {
+  const button = form.querySelector('button[type="submit"]');
+  if (!button) return;
+
+  if (isSubmitting) {
+    form.dataset.submitting = "true";
+    button.dataset.originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.innerHTML = `<span class="button-spinner" aria-hidden="true"></span>${escapeHtml(label)}`;
+    return;
+  }
+
+  delete form.dataset.submitting;
+  button.disabled = false;
+  button.removeAttribute("aria-busy");
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+    delete button.dataset.originalHtml;
+    refreshIcons();
+  }
 }
 
 function getDailyRequestState() {

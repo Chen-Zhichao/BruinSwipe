@@ -388,6 +388,33 @@ select:focus {
   background: var(--teal-dark);
 }
 
+.button:disabled,
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.button.primary:disabled,
+.button.primary:disabled:hover {
+  background: #6b9f99;
+}
+
+.button-spinner {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: white;
+  border-radius: 999px;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .button.secondary,
 .icon-button {
   border-color: var(--line);
