@@ -478,19 +478,27 @@ async function handleMeal(event) {
 
 async function handleSubmitRequest(event) {
   event.preventDefault();
+  const form = event.currentTarget;
+
+  if (form.dataset.submitting === "true") return;
+  setRequestFeedback(form, "");
 
   if (!cloudStore) {
-    showToast("Requests require cloud mode.");
+    const message = "Requests require cloud mode.";
+    setRequestFeedback(form, message, "error");
+    showToast(message);
     return;
   }
 
   if (getRemainingDailyRequests() <= 0) {
-    showToast("Daily request limit reached. Try again tomorrow.");
+    const message = "Daily request limit reached. Try again tomorrow.";
+    setRequestFeedback(form, message, "error");
+    showToast(message);
     renderRequestLimitStatus();
     return;
   }
 
-  const formData = new FormData(event.currentTarget);
+  const formData = new FormData(form);
   const type = String(formData.get("type") || "add_member");
   const note = String(formData.get("note") || "").trim();
   let payload = null;
@@ -500,7 +508,9 @@ async function handleSubmitRequest(event) {
     const contact = String(formData.get("contact") || "").trim();
 
     if (!name) {
-      showToast("Enter your name.");
+      const message = "Enter your name.";
+      setRequestFeedback(form, message, "error");
+      showToast(message);
       return;
     }
 
@@ -513,12 +523,16 @@ async function handleSubmitRequest(event) {
     const date = String(formData.get("topupDate") || todayKey());
 
     if (!getBillablePeople().some((person) => person.id === personId)) {
-      showToast("Choose a member.");
+      const message = "Choose a member.";
+      setRequestFeedback(form, message, "error");
+      showToast(message);
       return;
     }
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      showToast("Enter a positive top-up amount.");
+      const message = "Enter a positive top-up amount.";
+      setRequestFeedback(form, message, "error");
+      showToast(message);
       return;
     }
 
@@ -534,33 +548,51 @@ async function handleSubmitRequest(event) {
     ).map((input) => input.value);
 
     if (!Number.isFinite(price) || price < 0) {
-      showToast("Enter a non-negative swipe price.");
+      const message = "Enter a non-negative swipe price.";
+      setRequestFeedback(form, message, "error");
+      showToast(message);
       return;
     }
 
     if (personIds.length === 0) {
-      showToast("Select at least one member.");
+      const message = "Select at least one member.";
+      setRequestFeedback(form, message, "error");
+      showToast(message);
       return;
     }
 
     payload = { personIds, date, mealName, price: roundMoney(price), note };
   }
 
-  const { error } = await cloudStore.client.from("wallet_requests").insert({
-    wallet_id: cloudStore.walletId,
-    type,
-    payload,
-  });
+  setFormSubmitting(form, true, "Submitting...");
+  let requestError = null;
+  try {
+    const { error } = await cloudStore.client.from("wallet_requests").insert({
+      wallet_id: cloudStore.walletId,
+      type,
+      payload,
+    });
+    requestError = error;
+  } catch (error) {
+    requestError = error;
+  } finally {
+    setFormSubmitting(form, false);
+  }
 
-  if (error) {
-    showToast(error.message);
+  if (requestError) {
+    const message = requestError.message || "Request failed. Try again.";
+    setRequestFeedback(form, message, "error");
+    showToast(message);
     return;
   }
 
-  resetForm(event.currentTarget);
+  resetForm(form);
   resetDefaultDates();
   incrementDailyRequestCount();
   renderRequestLimitStatus();
+  const remaining = getRemainingDailyRequests();
+  const message = `Request submitted for admin approval. ${remaining} request${remaining === 1 ? "" : "s"} left today.`;
+  setRequestFeedback(form, message, "success");
   showToast("Request submitted for admin approval.");
 }
 
@@ -786,13 +818,13 @@ function changeLedgerPage(pageDelta) {
 
 function render() {
   const mealAwards = getMealAwardMap();
-  const topupAwards = getTopupAwardMap();
+  const balanceAwards = getBalanceAwardMap();
 
   updateAccessMode();
   syncControls();
   renderSummary();
-  renderBalances(mealAwards, topupAwards);
-  renderMembers(mealAwards, topupAwards);
+  renderBalances(mealAwards, balanceAwards);
+  renderMembers(mealAwards, balanceAwards);
   renderRequests();
   renderWeek();
   renderLedger();
@@ -901,6 +933,15 @@ function renderRequestLimitStatus() {
   });
 }
 
+function setRequestFeedback(form, message, tone = "") {
+  const feedback = form.querySelector("[data-request-feedback]");
+  if (!feedback) return;
+
+  feedback.textContent = message;
+  feedback.className = "request-feedback";
+  if (tone) feedback.classList.add(tone);
+}
+
 function renderSummary() {
   const balances = getBalanceRows();
   const weekStartKey = toDateKey(visibleWeekStart);
@@ -923,7 +964,7 @@ function renderSummary() {
   els.members.textContent = String(getBillablePeople().length);
 }
 
-function renderBalances(mealAwards = getMealAwardMap(), topupAwards = getTopupAwardMap()) {
+function renderBalances(mealAwards = getMealAwardMap(), balanceAwards = getBalanceAwardMap()) {
   const rows = getBalanceRows({ includeOrganizers: true }).sort(
     (a, b) => a.balance - b.balance || a.name.localeCompare(b.name),
   );
@@ -958,7 +999,7 @@ function renderBalances(mealAwards = getMealAwardMap(), topupAwards = getTopupAw
             <div class="member-name-line">
               <strong>${escapeHtml(row.name)}</strong>
               ${isOrganizer ? '<span class="role-tag">manager</span>' : ""}
-              ${renderTopupAwards(row.id, topupAwards)}
+              ${renderBalanceAwards(row.id, balanceAwards)}
               ${renderMealAwards(row.id, mealAwards)}
             </div>
             ${!isOrganizer && row.contact ? `<div class="empty-state">${escapeHtml(row.contact)}</div>` : ""}
@@ -973,7 +1014,7 @@ function renderBalances(mealAwards = getMealAwardMap(), topupAwards = getTopupAw
     .join("");
 }
 
-function renderMembers(mealAwards = getMealAwardMap(), topupAwards = getTopupAwardMap()) {
+function renderMembers(mealAwards = getMealAwardMap(), balanceAwards = getBalanceAwardMap()) {
   if (!els.membersBody) return;
 
   const people = state.people
@@ -1008,7 +1049,7 @@ function renderMembers(mealAwards = getMealAwardMap(), topupAwards = getTopupAwa
           <td>
             <div class="member-name-line">
               <strong>${escapeHtml(person.name)}</strong>
-              ${renderTopupAwards(person.id, topupAwards)}
+              ${renderBalanceAwards(person.id, balanceAwards)}
               ${renderMealAwards(person.id, mealAwards)}
             </div>
           </td>
@@ -1279,30 +1320,25 @@ function getTopMealCounts(startKey, endKey, eligibleIds) {
   return winners;
 }
 
-function getTopupAwardMap() {
-  const eligibleIds = new Set(getBillablePeople().map((person) => person.id));
-  const totals = new Map();
+function getBalanceAwardMap() {
+  const rows = getBalanceRows();
+  if (rows.length === 0) return new Map();
 
-  state.transactions.forEach((transaction) => {
-    if (transaction.type !== "topup" || !eligibleIds.has(transaction.personId)) return;
-    totals.set(transaction.personId, roundMoney((totals.get(transaction.personId) || 0) + transaction.amount));
-  });
-
-  const topAmount = Math.max(0, ...totals.values());
-  if (topAmount === 0) return new Map();
+  const topBalance = Math.max(...rows.map((row) => row.balance));
+  if (topBalance <= 0) return new Map();
 
   const winners = new Map();
-  totals.forEach((amount, personId) => {
-    if (amount === topAmount) winners.set(personId, amount);
+  rows.forEach((row) => {
+    if (row.balance === topBalance) winners.set(row.id, row.balance);
   });
   return winners;
 }
 
-function renderTopupAwards(personId, topupAwards) {
-  const amount = topupAwards.get(personId);
-  if (!amount) return "";
+function renderBalanceAwards(personId, balanceAwards) {
+  const balance = balanceAwards.get(personId);
+  if (!balance) return "";
 
-  const title = `Most total top-ups: ${currency.format(amount)}`;
+  const title = `Highest current balance: ${currency.format(balance)}`;
   return `
     <span class="diamond-badge" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">
       <span aria-hidden="true">💎</span>

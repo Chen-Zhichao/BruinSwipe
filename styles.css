@@ -307,6 +307,31 @@ h2 {
   color: var(--red);
 }
 
+.request-feedback {
+  margin: -2px 0 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 9px 11px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.request-feedback:empty {
+  display: none;
+}
+
+.request-feedback.success {
+  border-color: #b8e5c4;
+  background: #eaf7ee;
+  color: var(--green);
+}
+
+.request-feedback.error {
+  border-color: #f1b8b2;
+  background: #fff5f4;
+  color: var(--red);
+}
+
 .stacked-form {
   display: grid;
   gap: 14px;

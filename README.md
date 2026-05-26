@@ -12,12 +12,13 @@ Bruin$wipe🐻🍚 tracks prepaid balances for UCLA meal swipes.
 - Show a Monday-Sunday weekly swipe view.
 - Paginate the ledger at 10 entries per page.
 - Highlight weekly and monthly swipe leaders with food badges.
-- Highlight the top total top-up member with a diamond badge.
+- Highlight the non-manager member with the highest current balance with a diamond badge.
 - Export and import a JSON backup.
 - Optional Supabase cloud sync so friends can open the same URL and see live balances.
 - Let friends submit add/top-up/swipe requests for admin approval.
 - Let admins edit the name on pending add-member requests before approval.
 - Limit each browser to 5 successful public requests per day.
+- Show inline feedback after public request submissions.
 - Refresh admin auth before saving and show a saving state on meal records.
 
 ## Run locally
